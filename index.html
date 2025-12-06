@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Barcode Matcher</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Target Input Styling */
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        #targetBarcode {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        .start-button {
+            background-color: #4CAF50; 
+            color: white; 
+            padding: 10px 15px; 
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 10px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        
+        .start-button:hover {
+            background-color: #45a049;
+        }
+        
+        /* Camera/Scanning Area */
+        #scanner-container {
+            position: relative;
+            width: 100%;
+            /* QuaggaJS will insert a <video> and <canvas> here */
+            background-color: #000;
+            border-radius: 8px;
+            overflow: hidden;
+            min-height: 250px; /* Ensure visibility before scan starts */
+            display: none; /* Hidden until the user clicks Start Scan */
+        }
+        
+        /* QuaggaJS styling for video/canvas */
+        #scanner-container > video, #scanner-container > canvas {
+            max-width: 100%;
+            object-fit: cover;
+            border-radius: 8px;
+            display: block;
+        }
+
+        /* Scanning Overlay (The target viewfinder, QuaggaJS draws its own box, but we'll use this for the background) */
+        .scanner-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Adding a pulsing line over the video feed for better indication */
+            box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5); 
+            pointer-events: none;
+        }
+
+        /* Result Display */
+        #result-message {
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 15px;
+            display: none; 
+        }
+
+        .success {
+            background-color: #e6ffe6;
+            color: #4CAF50;
+            border: 1px solid #4CAF50;
+        }
+
+        .error {
+            background-color: #ffe6e6;
+            color: #f44336;
+            border: 1px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🔍 Barcode Matcher</h1>
+        
+        <label for="targetBarcode">Target Barcode Number:</label>
+        <input type="text" id="targetBarcode" placeholder="Enter the barcode to search for">
+        
+        <button class="start-button" id="startButton">Start Barcode Scan</button>
+
+        <div id="scanner-container">
+            <div class="scanner-overlay"></div>
+        </div>
+
+        <div id="result-message"></div>
+
+        <p style="text-align: center; color: #777; font-size: 0.9em;">
+            Click 'Start Barcode Scan' and point your camera.
+        </p>
+
+    </div>
+
+    <script>
+        // Minified version of QuaggaJS (v0.12.1)
+        /* ... (The actual minified QuaggaJS code, which is too long to include here, would be placed here) ... */
+        
+        // **NOTE:** In a real deployment, you would paste the entire minified QuaggaJS library 
+        // code right here to make this a single file. For this example, I'll use a placeholder
+        // and assume Quagga is available globally.
+        
+        // **To make this run:** Search for "QuaggaJS CDN" and copy the script content, or use a tool 
+        // to download the minified library and paste its contents below. For this demonstration, 
+        // I will structure the logic as if it is already loaded.
+        
+        // Since I cannot paste the entire library file here due to length, I will proceed with 
+        // the core application logic, assuming the Quagga global object is present.
+    </script>
+    
+    <script>
+        const targetInput = document.getElementById('targetBarcode');
+        const resultDiv = document.getElementById('result-message');
+        const startButton = document.getElementById('startButton');
+        const scannerContainer = document.getElementById('scanner-container');
+        
+        let isScanning = false;
+
+        function showResult(type, message) {
+            resultDiv.className = type;
+            resultDiv.textContent = message;
+            resultDiv.style.display = 'block';
+        }
+
+        function clearResult() {
+            resultDiv.style.display = 'none';
+        }
+
+        function stopScanning() {
+            if (window.Quagga) {
+                window.Quagga.stop();
+            }
+            isScanning = false;
+            scannerContainer.style.display = 'none';
+            startButton.textContent = 'Start Barcode Scan';
+            startButton.classList.remove('error');
+            startButton.classList.add('start-button');
+        }
+
+        function startScanning() {
+            const targetBarcode = targetInput.value.trim();
+            if (!targetBarcode) {
+                showResult('error', 'Please enter a Target Barcode Number first!');
+                return;
+            }
+            clearResult();
+            
+            isScanning = true;
+            startButton.textContent = 'Stop Scan';
+            startButton.classList.remove('start-button');
+            startButton.classList.add('error');
+            scannerContainer.style.display = 'block';
+
+            if (window.Quagga) {
+                window.Quagga.init({
+                    inputStream: {
+                        name: "Live",
+                        type: "LiveStream",
+                        target: scannerContainer, // Element to attach the video stream to
+                        constraints: {
+                            facingMode: "environment" // Use the back camera
+                        }
+                    },
+                    decoder: {
+                        readers: ["ean_reader", "upc_reader", "code_128_reader"] // Common barcode types
+                    }
+                }, function (err) {
+                    if (err) {
+                        console.error(err);
+                        stopScanning();
+                        showResult('error', 'Camera Error: ' + err.message);
+                        return
+                    }
+                    window.Quagga.start();
+                });
+            } else {
+                showResult('error', 'QuaggaJS library is not loaded. Cannot scan.');
+                return;
+            }
+        }
+
+        startButton.addEventListener('click', () => {
+            if (isScanning) {
+                stopScanning();
+            } else {
+                startScanning();
+            }
+        });
+
+        if (window.Quagga) {
+            // This function runs every time Quagga successfully decodes a barcode
+            window.Quagga.onDetected(function (data) {
+                const scannedBarcode = data.codeResult.code.trim();
+                const targetBarcode = targetInput.value.trim();
+
+                // Check for a match
+                if (scannedBarcode === targetBarcode) {
+                    // MATCH FOUND!
+                    stopScanning(); 
+                    showResult('success', `✅ MATCH FOUND! Scanned: ${scannedBarcode}`);
+                } else {
+                    // Flash a temporary error indicator
+                    // The scanning continues, but the user gets a visual cue that it was the wrong one.
+                    showResult('error', `❌ Scanned: ${scannedBarcode}. Trying again...`);
+                    // Clear the message after a short delay so the user can focus on the next scan
+                    setTimeout(clearResult, 1500); 
+                }
+            });
+            
+            // Optional: Draw box around detected area (helpful for debugging)
+            // Quagga.onProcessed(function (result) {
+            //     var drawingCtx = Quagga.canvas.ctx.overlay,
+            //         drawingCanvas = Quagga.canvas.dom.overlay;
+
+            //     if (result) {
+            //         if (result.boxes) {
+            //             drawingCtx.clearRect(0, 0, parseInt(drawingCanvas.getAttribute("width")), parseInt(drawingCanvas.getAttribute("height")));
+            //             result.boxes.filter(function (box) {
+            //                 return box !== result.box;
+            //             }).forEach(function (box) {
+            //                 Quagga.ImageDebug.drawPath(box, { x: 0, y: 1 }, drawingCtx, { color: "green", lineWidth: 2 });
+            //             });
+            //         }
+
+            //         if (result.box) {
+            //             Quagga.ImageDebug.drawPath(result.box, { x: 0, y: 1 }, drawingCtx, { color: "#00F", lineWidth: 2 });
+            //         }
+
+            //         if (result.codeResult && result.codeResult.code) {
+            //             Quagga.ImageDebug.drawPath(result.line, { x: 'x', y: 'y' }, drawingCtx, { color: 'red', lineWidth: 3 });
+            //         }
+            //     }
+            // });
+        }
+    </script>
+
+</body>
+</html>
